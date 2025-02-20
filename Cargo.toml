@@ -1,0 +1,14 @@
+[package]
+name = "threadporter"
+description = "First aid kit for !Send + !Sync values ⛑️"
+authors = ["Sebastian Urban <surban@surban.net>"]
+categories = ["rust-patterns", "wasm"]
+keywords = ["send", "sync"]
+license = "Apache-2.0"
+repository = "https://github.com/surban/threadporter"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+futures-core = "0.3"
+futures-sink = "0.3"
