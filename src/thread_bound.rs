@@ -103,6 +103,7 @@ impl<T> fmt::Debug for ThreadBound<T>
 where
     T: fmt::Debug,
 {
+    #[track_caller]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut d = f.debug_struct("ThreadBound");
         d.field("thread_id", &self.thread_id);
@@ -121,6 +122,16 @@ where
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         self.check();
         self.value.fmt(f)
+    }
+}
+
+impl<T> Default for ThreadBound<T>
+where
+    T: Default,
+{
+    #[track_caller]
+    fn default() -> Self {
+        Self::new(T::default())
     }
 }
 
