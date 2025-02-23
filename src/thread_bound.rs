@@ -14,6 +14,11 @@ use std::{
     thread::ThreadId,
 };
 
+/// Binds the value to the current thread.
+pub fn thread_bound<T>(value: T) -> ThreadBound<T> {
+    ThreadBound::new(value)
+}
+
 /// Allows access to a value only from the thread that created this,
 /// but always implements [`Send`] and [`Sync`].
 ///

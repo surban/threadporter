@@ -6,4 +6,4 @@
 //!
 
 mod thread_bound;
-pub use thread_bound::ThreadBound;
+pub use thread_bound::{thread_bound, ThreadBound};
