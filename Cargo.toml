@@ -6,7 +6,7 @@ categories = ["rust-patterns", "wasm"]
 keywords = ["send", "sync"]
 license = "Apache-2.0"
 repository = "https://github.com/surban/threadporter"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 
 [dependencies]

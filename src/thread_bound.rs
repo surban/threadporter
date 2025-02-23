@@ -3,6 +3,7 @@
 use futures_core::Stream;
 use futures_sink::Sink;
 use std::{
+    any::type_name,
     fmt,
     future::Future,
     mem::{needs_drop, ManuallyDrop},
@@ -49,6 +50,7 @@ impl<T> ThreadBound<T> {
     ///
     /// ### Panics
     /// Panics if this was created by another thread.
+    #[track_caller]
     pub fn into_inner(mut this: Self) -> T {
         this.check();
         this.taken = true;
@@ -62,10 +64,12 @@ impl<T> ThreadBound<T> {
     }
 
     #[inline]
+    #[track_caller]
     fn check(&self) {
         if !Self::is_usable(self) {
             panic!(
-                "cannot use value on thread {:?} since it belongs to thread {:?}",
+                "cannot use {} on thread {:?} since it belongs to thread {:?}",
+                type_name::<T>(),
                 thread::current().id(),
                 self.thread_id
             );
@@ -75,6 +79,7 @@ impl<T> ThreadBound<T> {
 
 impl<T> Deref for ThreadBound<T> {
     type Target = T;
+    #[track_caller]
     fn deref(&self) -> &T {
         self.check();
         &self.value
@@ -82,6 +87,7 @@ impl<T> Deref for ThreadBound<T> {
 }
 
 impl<T> DerefMut for ThreadBound<T> {
+    #[track_caller]
     fn deref_mut(&mut self) -> &mut T {
         self.check();
         &mut self.value
@@ -106,6 +112,7 @@ impl<T> fmt::Display for ThreadBound<T>
 where
     T: fmt::Display,
 {
+    #[track_caller]
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         self.check();
         self.value.fmt(f)
@@ -116,6 +123,7 @@ impl<T> Clone for ThreadBound<T>
 where
     T: Clone,
 {
+    #[track_caller]
     fn clone(&self) -> Self {
         self.check();
         Self { thread_id: self.thread_id, value: self.value.clone(), taken: self.taken }
@@ -123,6 +131,7 @@ where
 }
 
 impl<T> std::borrow::Borrow<T> for ThreadBound<T> {
+    #[track_caller]
     fn borrow(&self) -> &T {
         self.check();
         &self.value
@@ -130,6 +139,7 @@ impl<T> std::borrow::Borrow<T> for ThreadBound<T> {
 }
 
 impl<T> std::borrow::BorrowMut<T> for ThreadBound<T> {
+    #[track_caller]
     fn borrow_mut(&mut self) -> &mut T {
         self.check();
         &mut self.value
@@ -140,6 +150,7 @@ impl<T> PartialEq for ThreadBound<T>
 where
     T: PartialEq,
 {
+    #[track_caller]
     fn eq(&self, other: &ThreadBound<T>) -> bool {
         self.check();
         other.check();
@@ -151,6 +162,7 @@ impl<T> PartialEq<T> for ThreadBound<T>
 where
     T: PartialEq,
 {
+    #[track_caller]
     fn eq(&self, other: &T) -> bool {
         self.check();
         (*self.value).eq(other)
@@ -163,6 +175,7 @@ impl<T> PartialOrd for ThreadBound<T>
 where
     T: PartialOrd,
 {
+    #[track_caller]
     fn partial_cmp(&self, other: &ThreadBound<T>) -> Option<std::cmp::Ordering> {
         self.check();
         other.check();
@@ -174,6 +187,7 @@ impl<T> PartialOrd<T> for ThreadBound<T>
 where
     T: PartialOrd,
 {
+    #[track_caller]
     fn partial_cmp(&self, other: &T) -> Option<std::cmp::Ordering> {
         self.check();
         (*self.value).partial_cmp(other)
@@ -184,6 +198,7 @@ impl<T> Ord for ThreadBound<T>
 where
     T: Ord,
 {
+    #[track_caller]
     fn cmp(&self, other: &ThreadBound<T>) -> std::cmp::Ordering {
         self.check();
         other.check();
@@ -195,6 +210,7 @@ impl<T> std::hash::Hash for ThreadBound<T>
 where
     T: std::hash::Hash,
 {
+    #[track_caller]
     fn hash<H>(&self, state: &mut H)
     where
         H: std::hash::Hasher,
@@ -205,6 +221,7 @@ where
 }
 
 impl<T> Drop for ThreadBound<T> {
+    #[track_caller]
     fn drop(&mut self) {
         if needs_drop::<T>() && !self.taken {
             self.check();
@@ -219,6 +236,7 @@ where
 {
     type Output = T::Output;
 
+    #[track_caller]
     fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
         self.check();
         let future = unsafe { self.map_unchecked_mut(|s| &mut *s.value) };
@@ -232,24 +250,28 @@ where
 {
     type Error = T::Error;
 
+    #[track_caller]
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
         self.check();
         let sink = unsafe { self.map_unchecked_mut(|s| &mut *s.value) };
         sink.poll_ready(cx)
     }
 
+    #[track_caller]
     fn start_send(self: Pin<&mut Self>, item: S) -> Result<(), Self::Error> {
         self.check();
         let sink = unsafe { self.map_unchecked_mut(|s| &mut *s.value) };
         sink.start_send(item)
     }
 
+    #[track_caller]
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
         self.check();
         let sink = unsafe { self.map_unchecked_mut(|s| &mut *s.value) };
         sink.poll_flush(cx)
     }
 
+    #[track_caller]
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
         self.check();
         let sink = unsafe { self.map_unchecked_mut(|s| &mut *s.value) };
@@ -263,6 +285,7 @@ where
 {
     type Item = T::Item;
 
+    #[track_caller]
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
         self.check();
         let stream = unsafe { self.map_unchecked_mut(|s| &mut *s.value) };
